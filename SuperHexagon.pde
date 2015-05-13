@@ -35,6 +35,7 @@ int spawnclock;
 //Game Objects
 ArrayList<Obs> objects;
 ArrayList<Obs> toAdd;
+ArrayList<Float> distances;
 
 
 PlayerObject player;
@@ -45,7 +46,7 @@ BeatBarObject beatBar;
 boolean left;
 boolean right;
 void setup(){
-  size(500, 500);
+  size(750, 750);
   smooth();
   minim = new Minim(this);
   newGame = true;
@@ -90,6 +91,7 @@ void draw(){
    
    objects= new ArrayList<Obs>();
    toAdd = new ArrayList<Obs>();
+   distances = new ArrayList<Float>();
    center = new CenterObject(0);
    objects.add(center);
    player = new PlayerObject(1);
@@ -151,19 +153,45 @@ abstract class ObsCent extends Obs{
   float radius;
 }
 
+class DetectObject extends ObsCent{
+  float distance;
+  float x1;
+  float y1;
+  float x2;
+  float y2;
+  DetectObject(float a, float b, float c, float d){
+    x1 = a;
+    y1 = b;
+    x2 = c;
+    y2 = d;
+  }
+  void update(){
+   //distance =(float) (Math.abs((y2 - y1)*player.x-(x2-x1)*player.y +x2*y1 - y2*x1)/(Math.sqrt(Math.pow((y2-y1),2) + Math.pow((x2-x1), 2))));
+   if(distance < 1){
+  //  System.out.println("GAME OVER"); 
+   }
+  }
+  
+}
+
 class BeatBarObject extends Obs{
   ArrayList<Float> values;
   ArrayList<Color> colors;
   ArrayList<Float> energy;
+  ArrayList<Color> colors2;
  
   BeatBarObject(){
     values = new ArrayList<Float>(beat.dectectSize());
     for(int i = 0; i < beat.dectectSize(); i++){
      values.add(1f); 
     }
-    colors = new ArrayList<Color>(beat.dectectSize());
-    for(int i = 0; i < beat.dectectSize(); i++){
+    colors = new ArrayList<Color>(fft.specSize());
+    for(int i = 0; i < fft.specSize(); i++){
      colors.add(new Color(0,0,0)); 
+    }
+    colors2 = new ArrayList<Color>(fft.specSize());
+    for(int i = 0; i < fft.specSize(); i++){
+     colors2.add(new Color(0,0,0)); 
     }
     energy = new ArrayList<Float>();
     for(int i = 0; i < beat.dectectSize(); i++){
@@ -174,6 +202,27 @@ class BeatBarObject extends Obs{
   }
   void update(){
     int numberBeats =0;
+    for(int i = 0; i < fft.specSize()-1 ; i++){
+     int ffti = i;
+     int red= 0;
+     int green = 0;
+     int blue = 0;
+     int red2= 0;
+     int green2 = 0;
+     int blue2 = 0;
+     double freq = (Math.log((fft.getBand(ffti))+1))/2;
+    
+     red   =(int) (Math.sin(freq)* 127 + 128);
+     green =(int) (Math.sin(freq+(Math.PI/2)) * 127 + 128);
+     blue  =(int) (Math.sin(freq+((2*Math.PI)/2)) * 127 + 128);
+     
+     red2   =(int) (Math.sin(freq)* 127 + 128);
+     green2 =(int) (Math.sin(freq+(Math.PI/2)) * 127 + 128);
+     blue2  =(int) (Math.sin(freq+((2*Math.PI)/2)) * 127 + 128);
+     colors2.set(i, new Color(red2, green2, blue2));
+     colors.set(i, new Color(red, green, blue));
+    }
+    
     for(int i = 0; i < beat.dectectSize()-1; i++){
      int ffti = (fft.specSize()/ beat.dectectSize()) * i; 
      if(beat.isRange(i, i+1, 1)){
@@ -187,15 +236,7 @@ class BeatBarObject extends Obs{
      } 
      values.set(i, values.get(i)*.9);
       
-     int red= 0;
-     int green = 0;
-     int blue = 0;
-     double freq = (Math.log((fft.getBand(ffti))+1))/2;
     
-     red   =(int) (Math.sin(freq)* 127 + 128);
-     green =(int) (Math.sin(freq+(Math.PI/3)) * 127 + 128);
-     blue  =(int) (Math.sin(freq+((2*Math.PI)/3)) * 127 + 128);
-     colors.set(i, new Color(red, green, blue)); 
      if(!canSpawn){
       if(spawnclock > 50){
        canSpawn = true;
@@ -204,7 +245,8 @@ class BeatBarObject extends Obs{
      }
      if(fft.getBand(ffti)>energy.get(i) && canSpawn){
        ArrayList<Integer> taken = new ArrayList<Integer>();
-       for(int i2 = 0; i2 < (Math.random()*center.sides-1);i2++){
+      
+       for(int i2 = 0; i2 < (center.sides-1);i2++){
          int newInt =(int) (Math.random()*center.sides);
          boolean already = false;
          for(int checker = 0; checker < taken.size(); checker++){
@@ -216,7 +258,7 @@ class BeatBarObject extends Obs{
          taken.add(newInt);  
          } 
         }
-       System.out.println(taken);
+         
        for(int lo = 0; lo < taken.size(); lo++){
          toAdd.add( new EnemyObject((int)(taken.get(lo))));
        }
@@ -225,7 +267,7 @@ class BeatBarObject extends Obs{
      energy.set(i,energy.get(i)+.7*fft.getBand(ffti));
     }
     for(int i = 0; i < energy.size(); i++){
-     energy.set(i, energy.get(i)*.9);
+     energy.set(i, energy.get(i)*.7);
     }
     
     
@@ -267,6 +309,14 @@ class EnemyObject extends ObsCent{
    if(Math.abs(radius) < 1){
      toremove = true;
    }
+   if(radius < 20){
+    float xa = (float) (radius*Math.cos(((Math.PI*2)/center.sides)*(idtrack))) ;
+    float ya = (float) (radius*Math.sin(((Math.PI*2)/center.sides)*(idtrack)));
+    float xb = (float) (radius*Math.cos(((Math.PI*2)/center.sides)*(idtrack+1)));
+    float yb = (float) (radius*Math.sin(((Math.PI*2)/center.sides)*(idtrack+1)));
+     DetectObject det = new DetectObject(xa, ya, xb, yb);
+     toAdd.add(det);
+   }
    beatCo*=.9;
    
  }
@@ -290,6 +340,7 @@ class EnemyObject extends ObsCent{
    float y1 = (float) ((radius + ((radius2-radius)/2))*Math.sin(((Math.PI*2)/center.sides)*idtrack));
    float y2 = (float) ((radius + ((radius2-radius)/2))*Math.sin(((Math.PI*2)/center.sides)*(idtrack+1)));
    float y3 = (float)(y1+y2)/2;
+  stroke(beatBar.colors2.get(id).red,beatBar.colors2.get(id).green,beatBar.colors2.get(id).blue);
    line(xa,ya,xb,yb);
    line(xc,yc,xd,yd);
    line(xa,ya,xc,yc);
@@ -345,9 +396,9 @@ class BackgroundObject extends ObsCent{
    translate(width/2, height/2);
    for(int i = 0; i < numberSides; i++){
      if(i%2 == 1){
-      fill(50);
+      fill(beatBar.colors.get(3).red -100,beatBar.colors.get(3).green -100,beatBar.colors.get(3).blue - 100);
      }else{
-      fill(130); 
+       fill(beatBar.colors2.get(1).red -50,beatBar.colors2.get(1).green - 50,beatBar.colors2.get(1).blue -50);
      }
     stroke(0,0);
     triangle((float)0,(float) 0,(float) (width*Math.cos(((Math.PI*2)/numberSides)*i)),(float) (height*Math.sin(((Math.PI*2)/numberSides)*i)),(float) (width*Math.cos(((Math.PI*2)/numberSides)*(i+1))),(float) (height*Math.sin(((Math.PI*2)/numberSides)*(i+1))));
@@ -361,7 +412,7 @@ class BackgroundObject extends ObsCent{
 
 class PlayerObject extends ObsCent{
   float ORBITDISTANCE = center.radius + 10;
-  float ORBITACCELERATION = .01;
+  float ORBITACCELERATION = .1;
   float beatCo;
   PlayerObject(int idd){
     id = idd;
@@ -376,10 +427,10 @@ class PlayerObject extends ObsCent{
   void update(){
 
     if(left){
-     rotationspeed-=ORBITACCELERATION; 
+     rotationspeed=-ORBITACCELERATION; 
     }
     if(right){
-     rotationspeed+=ORBITACCELERATION; 
+     rotationspeed=ORBITACCELERATION; 
     }
     if(!left&&!right || left&&right){
      rotationspeed = 0; 
@@ -394,6 +445,9 @@ class PlayerObject extends ObsCent{
     }
     beatCo*= .9;
     rotation+=rotationspeed;
+    
+    x = (float)Math.cos(rotation)*ORBITDISTANCE;
+    y = (float)Math.sin(rotation)*ORBITDISTANCE;
   }
   void collision(){
     
