@@ -74,16 +74,16 @@ void tick(){
 }
 void draw(){
   if(newGame){
-//    JFileChooser chooser = new JFileChooser();
-//    int returnValue = chooser.showOpenDialog(null);
-//    if(returnValue == JFileChooser.APPROVE_OPTION){
-//     File file = chooser.getSelectedFile();
-//     song = minim.loadFile(file.getAbsolutePath(), 1024); 
-//    }
-   song = minim.loadFile("song.mp3", 1024);
+    JFileChooser chooser = new JFileChooser();
+    int returnValue = chooser.showOpenDialog(null);
+    if(returnValue == JFileChooser.APPROVE_OPTION){
+     File file = chooser.getSelectedFile();
+     song = minim.loadFile(file.getAbsolutePath(), 1024); 
+    }
+  // song = minim.loadFile("song.mp3", 1024);
    song.play();
    beat = new BeatDetect(song.bufferSize(), song.sampleRate());
-   beat.setSensitivity(1000);
+   beat.setSensitivity(300);
    bl = new BeatListener(beat, song);
    newGame = false;
    playingGame = true;
@@ -210,11 +210,17 @@ class BeatBarObject extends Obs{
      int red2= 0;
      int green2 = 0;
      int blue2 = 0;
-     double freq = (Math.log((fft.getBand(ffti))+1))/2;
+     int fftave = 0;
+     for(int c = 0; c < fft.specSize(); c++){
+      fftave+=fft.getBand(c); 
+     }
+     
+     
+     double freq = (Math.log((fftave)+1))/2;
     
      red   =(int) (Math.sin(freq)* 127 + 128);
-     green =(int) (Math.sin(freq+(Math.PI/2)) * 127 + 128);
-     blue  =(int) (Math.sin(freq+((2*Math.PI)/2)) * 127 + 128);
+     green =(int) (Math.sin(freq+((2*Math.PI)/2)) * 127 + 128);
+     blue  =(int) (Math.sin(freq+(Math.PI/2)) * 127 + 128);
      
      red2   =(int) (Math.sin(freq)* 127 + 128);
      green2 =(int) (Math.sin(freq+(Math.PI/2)) * 127 + 128);
@@ -245,8 +251,11 @@ class BeatBarObject extends Obs{
      }
      if(fft.getBand(ffti)>energy.get(i) && canSpawn){
        ArrayList<Integer> taken = new ArrayList<Integer>();
-      
-       for(int i2 = 0; i2 < (center.sides-1);i2++){
+       int fftave = 0;
+       for(int i3 = 0; i3 < fft.specSize(); i3++){
+        fftave+=fft.getBand(i3); 
+       }
+       for(int i2 = 0; i2 < ((center.sides-1)/1);i2++){
          int newInt =(int) (Math.random()*center.sides);
          boolean already = false;
          for(int checker = 0; checker < taken.size(); checker++){
